@@ -40,7 +40,7 @@ const CategoryComponent = () => {
     try {
       if (editCategoryId) {
         const updatedCategory = { ...newCategory, id: editCategoryId };
-        await axios.put(
+        await axios.patch(
           `http://localhost:3000/category/${editCategoryId}`,
           updatedCategory
         );

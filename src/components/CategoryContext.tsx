@@ -1,5 +1,5 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import React, { createContext, useState, useEffect, ReactNode } from "react";
+import axios from "axios";
 
 interface Category {
   id: string;
@@ -16,7 +16,9 @@ export const CategoryContext = createContext<CategoryContextProps>({
   fetchCategories: () => {},
 });
 
-export const CategoryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const CategoryProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -25,10 +27,10 @@ export const CategoryProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/category');
+      const response = await axios.get("http://localhost:3000/category");
       setCategories(response.data);
     } catch (error) {
-      console.log('No se encontraron categorías:', error);
+      console.log("No se encontraron categorías:", error);
     }
   };
 
