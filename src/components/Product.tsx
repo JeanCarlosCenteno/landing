@@ -1,21 +1,23 @@
-import axios from "axios";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { v4 as uuidv4, validate as validateUUID } from 'uuid';
 
-interface Producto {
-  id: number;
+interface Product {
+  id: string;
   name_product: string;
   price: number;
   quantity: number;
 }
 
-function Productos() {
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [nuevoProducto, setNuevoProducto] = useState<Partial<Producto>>({
-    name_product: "",
+const ProductComponent = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [newProduct, setNewProduct] = useState<Product>({
+    id: '',
+    name_product: '',
     price: 0,
     quantity: 0,
   });
-  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [editProductId, setEditProductId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -23,113 +25,120 @@ function Productos() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get("http://localhost:3000/product");
-      setProductos(response.data);
+      const response = await axios.get('http://localhost:3000/product');
+      setProducts(response.data);
     } catch (error) {
-      console.error("Error al obtener los productos:", error);
+      console.log('No se encontraron productos:', error);
     }
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    setNuevoProducto({ ...nuevoProducto, [name]: value });
+    setNewProduct({
+      ...newProduct,
+      [event.target.name]: event.target.value,
+    });
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
-      const response = await axios.post("http://localhost:3000/product", nuevoProducto);
-      console.log(response.data);
-      setProductos([...productos, response.data]);
-      setNuevoProducto({ name_product: "", price: undefined, quantity: 0 });
-    } catch (error) {
-      console.error("Error al enviar el nuevo producto:", error);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    try {
-      await axios.delete(`http://localhost:3000/product/${id}`);
-      setProductos(productos.filter((item) => item.id !== id));
-    } catch (error) {
-      console.error("Error al eliminar el producto:", error);
-    }
-  };
-
-  const handleEdit = (id: number) => {
-    const productToEdit = productos.find((item) => item.id === id);
-    if (productToEdit) {
-      setEditingProductId(id);
-      setNuevoProducto({ ...productToEdit });
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (editingProductId) {
-      try {
-        const response = await axios.put(
-          `http://localhost:3000/product/${editingProductId}`,
-          nuevoProducto
-        );
-        console.log(response.data);
-        const updatedProducts = productos.map((item) => {
-          if (item.id === editingProductId) {
-            return { ...response.data };
+      if (editProductId) {
+        const updatedProduct = { ...newProduct, id: editProductId };
+        await axios.put(`http://localhost:3000/product/${editProductId}`, updatedProduct);
+        const updatedProducts = products.map((product) => {
+          if (product.id === editProductId) {
+            return updatedProduct;
           }
-          return item;
+          return product;
         });
-        setProductos(updatedProducts);
-        setNuevoProducto({ name_product: "", price: undefined, quantity: 0 });
-        setEditingProductId(null);
-      } catch (error) {
-        console.error("Error al actualizar el producto:", error);
+        setProducts(updatedProducts);
+        setEditProductId(null);
+      } else {
+        const newId = uuidv4();
+        const response = await axios.post('http://localhost:3000/product', {
+          ...newProduct,
+          id: newId,
+        });
+        setProducts([...products, response.data]);
       }
+      setNewProduct({ id: '', name_product: '', price: 0, quantity: 0 });
+    } catch (error) {
+      console.error('Error al enviar el nuevo producto:', error);
+
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    const productToEdit = products.find((product) => product.id === id);
+    if (productToEdit) {
+      setEditProductId(id);
+      setNewProduct(productToEdit);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      if (validateUUID(id)) {
+        await axios.delete(`http://localhost:3000/product/${id}`);
+        setProducts(products.filter((item) => item.id !== id));
+      } else {
+        console.error('El ID del producto no es un UUID válido.');
+      }
+    } catch (error) {
+      console.error('Error al eliminar el producto:', error);
     }
   };
 
   return (
-    <div>
-      <h1 className="text-lg font-bold text-violet-600">Lista de Productos</h1>
-      <div>
-        <form className="flex flex-col space-y-4 w-80" onSubmit={handleSubmit}>
+    <div className="container mx-auto p-4">
+      <h1 className="text-lg font-bold text-violet-600 mb-4">Lista de Productos</h1>
+      <div className="mb-4">
+        <form className="flex flex-col space-y-4" onSubmit={handleSubmit}>
           <input
             type="text"
             name="name_product"
-            value={nuevoProducto.name_product}
+            value={newProduct.name_product}
             onChange={handleInputChange}
             placeholder="Nombre del producto"
             className="p-2 border border-gray-300 rounded"
-            required
           />
-                   <input
+
+          <input
+            type="number"
+            name="price"
+            value={newProduct.price}
+            onChange={handleInputChange}
+            placeholder="Precio del producto"
+            className="p-2 border border-gray-300 rounded"
+          />
+          <input
             type="number"
             name="quantity"
-            value={nuevoProducto.quantity}
+            value={newProduct.quantity}
             onChange={handleInputChange}
-            placeholder="Cantidad"
+            placeholder="Cantidad del producto"
             className="p-2 border border-gray-300 rounded"
-            required
           />
           <button
             type="submit"
             className="p-2 bg-blue-500 border-2 border-inherit rounded-lg text-white font-bold"
           >
-            Agregar producto
+            {editProductId ? 'Actualizar producto' : 'Agregar producto'}
           </button>
         </form>
       </div>
-      <div className="border border-gray-300 p-4 rounded-md w-80">
-        {productos.map((item) => (
+      <div className="border border-gray-300 p-4 rounded-md">
+        {products.map((item: Product) => (
           <div key={item.id} className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-semibold">Nombre: {item.name_product}</h3>
-              <h3>Precio: {item.price}</h3>
-              <h3>Cantidad: {item.quantity}</h3>
+              <p>Precio: {item.price}</p>
+              <p>Cantidad: {item.quantity}</p>
             </div>
             <div>
               <button
                 onClick={() => handleEdit(item.id)}
-                className="p-2 bg-yellow-500 text-white rounded-lg mr-2"
+                className="p-2 bg-green-500 text-white rounded-lg mr-2"
               >
                 Editar
               </button>
@@ -143,55 +152,9 @@ function Productos() {
           </div>
         ))}
       </div>
-      {editingProductId && (
-        <div className="mt-4">
-          <h2 className="text-lg font-bold text-violet-600">Editar Producto</h2>
-          <form className="flex flex-col space-y-4 w-80">
-            <input
-              type="text"
-              name="name_product"
-              value={nuevoProducto.name_product}
-              onChange={handleInputChange}
-              placeholder="Nombre del producto"
-              className="p-2 border border-gray-300 rounded"
-              required
-            />
-            <input
-              type="number"
-              name="price"
-              value={nuevoProducto.price || ""}
-              onChange={handleInputChange}
-              placeholder="Precio"
-              className="p-2 border border-gray-300 rounded"
-            />
-            <input
-              type="number"
-              name="quantity"
-              value={nuevoProducto.quantity}
-              onChange={handleInputChange}
-              placeholder="Cantidad"
-              className="p-2 border border-gray-300 rounded"
-              required
-            />
-            <div>
-              <button
-                onClick={handleUpdate}
-                className="p-2 bg-green-500 text-white rounded-lg"
-              >
-                Actualizar
-              </button>
-              <button
-                onClick={() => setEditingProductId(null)}
-                className="p-2 bg-gray-500 text-white rounded-lg ml-2"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
-  );
+  )
 }
 
-export default Productos
+export default ProductComponent;
+
